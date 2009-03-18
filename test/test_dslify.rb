@@ -5,6 +5,14 @@ require "context"
 
 class Quickie
   include Dslify
+  def parent(p=nil)
+    p ? @p=p : @p
+  end
+end
+
+class Dad
+  include Dslify
+  default_options(:curfew => 'midnight', :can => 'o ass wupin')
 end
 
 class QuickieTest < Test::Unit::TestCase
@@ -44,6 +52,53 @@ class QuickieTest < Test::Unit::TestCase
       @q.bobs.franks.should == "franke"
     end
   end
+  
+  context "default options" do
+    before do
+      @dad = Dad.new
+      @dad.curfew= '11pm'
+    end
+    it "should be overridden if specified" do
+      @dad.curfew.should == '11pm'
+    end
+    it "should be used if none set" do
+      @dad.can.should == 'o ass wupin'
+    end
+    # TODO: Decide, do we want the below behavior?
+    # it "should be able to set change default options" do 
+    #   Dad.default_options(:name=>'fred')
+    #   Dad.default_options.should == {:name=>'fred'}
+    # end
+    it "should be set on the class" do
+      @dad.class.default_options.should == {:curfew => 'midnight', :can => 'o ass wupin'}
+    end
+  end
+  
+  context "should search parent for methods if there is a parent" do
+      before do
+        @dad = Dad.new
+        @dad.car = 'gone'
+        @kid = Quickie.new
+        @kid.parent @dad
+        @kid.curfew 'never'
+      end
+      it "should have a parent" do
+        @kid.parent.nil?.should == false
+        @kid.parent.should == @dad
+      end
+      it "should use the parents class method if method is missing on self" do
+        @kid.respond_to?(:can).should == false
+        @kid.can.should == 'o ass wupin'
+      end
+      it "should use its own methods if it has them" do
+        @kid.curfew.should == 'never'
+      end
+      it "should not use parents instance methods" do
+        @kid.respond_to?(:car).should == false
+        @dad.car.should == 'gone'
+      end
+  end
+  
   context "with inheritance and classes" do
     before do
       class Pop
@@ -78,11 +133,12 @@ class QuickieTest < Test::Unit::TestCase
       @bar.name.should == "pangy"
     end
     it "should not add a method not in the default_dsl_options" do
-      @bar.respond_to?(:boat).should == false      
+      @bar.respond_to?(:boat).should == false
     end
     it "should return the original default options test" do
       @bar.default_dsl_options[:taste].should == "spicy"
       @bar.default_dsl_options[:name].should == "pangy"
     end
   end
+  
 end
